@@ -10,46 +10,49 @@ def charge_phone(foroshande_id, phone_id, amount, request_id):
     Fully thread-safe and prevents negative balances under high concurrency.
     Records a debit entry (BED) automatically in HesabEntry.
     """
+
     amount = Decimal(amount)
 
+    # 1️⃣ Lock Foroshande row to prevent race conditions
+    foroshande = Foroshande.objects.select_for_update().get(id=foroshande_id)
+    phone = PhoneNumber.objects.get(id=phone_id)
+
+    # 2️⃣ Create Charge immediately for idempotency, even if insufficient balance
+    charge, created = Charge.objects.get_or_create(
+        foroshande_id=foroshande_id,
+        request_id=request_id,
+        defaults={"phone": phone, "amount": amount, "status": Charge.NAMOVAFAGH},
+    )
+    if not created:
+        return charge  # already processed
+
+    # 3️⃣ Check balance after Charge creation
+    if not foroshande.can_deduct(amount):
+        # charge.status is already NAMOVAFAGH
+        charge.save(update_fields=["status"])
+        raise ValueError(f"Foroshande {foroshande.id} has insufficient balance")
+
+    # 4️⃣ Deduct balance and create HesabEntry atomically
     with transaction.atomic():
-        # Lock Foroshande row to prevent race conditions
+        # lock again to prevent race condition
         foroshande = Foroshande.objects.select_for_update().get(id=foroshande_id)
-        phone = PhoneNumber.objects.get(id=phone_id)
 
-        # Ensure idempotency: do not charge twice for the same request_id
-        charge, created = Charge.objects.get_or_create(
-            foroshande_id=foroshande_id,
-            request_id=request_id,
-            defaults={"phone": phone, "amount": amount, "status": Charge.NAMOVAFAGH},
-        )
-        if not created:
-            return charge  # already processed
-
-        # Check balance
-        if not foroshande.can_deduct(amount):
-            charge.status = Charge.NAMOVAFAGH
-            charge.save(update_fields=["status"])
-            raise ValueError(f"Foroshande {foroshande.id} has insufficient balance")
-
-        # Deduct balance
         foroshande.balance -= amount
         foroshande.save(update_fields=["balance"])
 
-        # Record a debit (BED) in HesabEntry automatically
         HesabEntry.objects.create(
             foroshande=foroshande,
             kind=HesabEntry.BED,
             amount=amount,
-            status=HesabEntry.TAIED,  # automatically approved
+            status=HesabEntry.TAIED,
             ref_type="CHARGE",
             ref_id=request_id,
             approved_at=timezone.now(),
-            approved_by=None  # no admin for automatic debit
+            approved_by=None
         )
 
-        # Update charge status
+        # 5️⃣ Update charge status to MOVAFAGH
         charge.status = Charge.MOVAFAGH
         charge.save(update_fields=["status"])
 
-        return charge
+    return charge

@@ -1,8 +1,15 @@
 from django.urls import path
-from core.views import ChargePhoneView, PhoneNumberListView, ForoshandeBalanceView
+from . import views
 
 urlpatterns = [
-    path("charge/", ChargePhoneView.as_view(), name="charge-phone"),
-    path("phones/", PhoneNumberListView.as_view(), name="phone-list"),
-    path("balance/<int:id>/", ForoshandeBalanceView.as_view(), name="foroshande-balance"),
+    # Charge a phone
+    path('charge-phone/', views.ChargePhoneView.as_view(), name='charge_phone'),  # POST
+    # List all phone numbers
+    path('phone-numbers/', views.PhoneNumberListView.as_view(), name='phone_number_list'),  # GET
+    # Retrieve a seller's balance
+    path('foroshande/<int:id>/balance/', views.ForoshandeBalanceView.as_view(), name='foroshande_balance'),  # GET
+    # List all charges for a seller
+    path('charges/<int:foroshande_id>/', views.ChargeListView.as_view(), name='charge_list'),  # GET
+    # Request to add credit
+    path('credit-add-request/', views.CreditAddRequestView.as_view(), name='credit_add_request'),  # POST
 ]

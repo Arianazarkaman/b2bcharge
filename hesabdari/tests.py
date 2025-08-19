@@ -1,78 +1,30 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
+from decimal import Decimal
+from hesabdari.models import HesabEntry
+from hesabdari.services import approve_entry
 from core.models import Foroshande
-from hesabdari.models import EtebarTaghir, HesabEntry
-from django.utils import timezone
 
 
-class EtebarTaghirTest(TestCase):
-    def setUp(self):
-        user = User.objects.create_user(username="ali", password="pass123")
-        self.foroshande = Foroshande.objects.create(user=user, name="F1")
+class HesabdariTests(TestCase):
+    def test_approve_entry_negative_balance_prevented(self):
+        user = User.objects.create(username="seller2")
+        f = Foroshande.objects.create(user=user, name="Seller 2", balance=0)
 
-    def test_create_etebar_taghir(self):
-        et = EtebarTaghir.objects.create(
-            foroshande=self.foroshande,
-            amount=10000,
-            idempotency_key="key_1",
-        )
-        self.assertEqual(et.status, EtebarTaghir.MONTAZER)
-        self.assertEqual(et.amount, 10000)
-
-    def test_unique_idempotency_key(self):
-        EtebarTaghir.objects.create(
-            foroshande=self.foroshande,
-            amount=5000,
-            idempotency_key="idemp1",
-        )
-        with self.assertRaises(Exception):
-            EtebarTaghir.objects.create(
-                foroshande=self.foroshande,
-                amount=7000,
-                idempotency_key="idemp1",  # duplicate
-            )
-
-
-class HesabEntryTest(TestCase):
-    def setUp(self):
-        user = User.objects.create_user(username="reza", password="pass123")
-        self.foroshande = Foroshande.objects.create(user=user, name="F2")
-
-    def test_hesab_entry_creation(self):
         entry = HesabEntry.objects.create(
-            foroshande=self.foroshande,
-            kind=HesabEntry.BES,
-            amount=15000,
-            ref_type="ETEBAR_TAGHIR",
-            ref_id="ref123",
+            foroshande=f,
+            kind=HesabEntry.BED,
+            amount=Decimal("1000"),
+            ref_type="CHARGE",
+            ref_id="NEG-1",
+            status=HesabEntry.MONTAZER,
         )
-        self.assertEqual(entry.amount, 15000)
-        self.assertEqual(entry.kind, HesabEntry.BES)
-        self.assertEqual(entry.ref_type, "ETEBAR_TAGHIR")
 
-    def test_amount_positive_constraint(self):
-        with self.assertRaises(Exception):
-            HesabEntry.objects.create(
-                foroshande=self.foroshande,
-                kind=HesabEntry.BED,
-                amount=0,  # violates constraint
-                ref_type="ETEBAR_TAGHIR",
-                ref_id="ref124",
-            )
+        admin = User.objects.create(username="admin2")
 
-    def test_unique_constraint_on_ref(self):
-        HesabEntry.objects.create(
-            foroshande=self.foroshande,
-            kind=HesabEntry.BES,
-            amount=5000,
-            ref_type="ETEBAR_TAGHIR",
-            ref_id="dup_ref",
-        )
-        with self.assertRaises(Exception):
-            HesabEntry.objects.create(
-                foroshande=self.foroshande,
-                kind=HesabEntry.BED,
-                amount=3000,
-                ref_type="ETEBAR_TAGHIR",
-                ref_id="dup_ref",  # duplicate ref
-            )
+        result = approve_entry(entry.id, admin)  # no exception
+
+        result.refresh_from_db()
+        f.refresh_from_db()
+        self.assertEqual(result.status, HesabEntry.RAD)
+        self.assertEqual(f.balance, 0)

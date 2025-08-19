@@ -1,8 +1,9 @@
 from django.urls import path
-from hesabdari.views import ApproveCreditView, HesabEntryListView, EtebarTaghirListView
+from . import views
 
 urlpatterns = [
-    path("approve/", ApproveCreditView.as_view(), name="approve-credit"),
-    path("ledger/<int:foroshande_id>/", HesabEntryListView.as_view(), name="ledger-list"),
-    path("adjustments/<int:foroshande_id>/", EtebarTaghirListView.as_view(), name="adjustment-list"),
+    # Approve a pending HesabEntry
+    path('hesab-entry/approve/', views.ApproveHesabEntryView.as_view(), name='approve_hesab_entry'),  # POST
+    # List all HesabEntries for a specific Foroshande
+    path('hesab-entry/list/<int:foroshande_id>/', views.HesabEntryListView.as_view(), name='hesab_entry_list'),  # GET
 ]
