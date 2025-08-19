@@ -1,14 +1,12 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
-from decimal import Decimal
-
 from core.models import Foroshande, PhoneNumber, Charge
-from core.serializers import PhoneNumberSerializer, ChargeSerializer, ForoshandeBalanceSerializer
+from core.serializers import PhoneNumberSerializer, ChargeSerializer, ForoshandeBalanceSerializer, CreditAddRequestSerializer
 from core.services import charge_phone
+from hesabdari.models import HesabEntry
 
-# -------------------------
-# Core / Seller Views
-# -------------------------
+
+
 
 class ChargePhoneView(generics.GenericAPIView):
     serializer_class = ChargeSerializer
@@ -39,3 +37,44 @@ class ForoshandeBalanceView(generics.RetrieveAPIView):
     serializer_class = ForoshandeBalanceSerializer
     lookup_field = "id"
     queryset = Foroshande.objects.all()
+
+
+class ChargeListView(generics.ListAPIView):
+    serializer_class = ChargeSerializer
+
+    def get_queryset(self):
+        foroshande_id = self.kwargs.get("foroshande_id")
+        return Charge.objects.filter(foroshande_id=foroshande_id).order_by("-created_at")
+
+
+
+class CreditAddRequestView(generics.GenericAPIView):
+    """
+    Foroshande requests to add credit.
+    Creates a pending HesabEntry (MONTAZER) with kind=BES.
+    Approval happens later via existing HesabEntry approval view.
+    """
+    serializer_class = CreditAddRequestSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        foroshande_id = serializer.validated_data["foroshande_id"]
+        amount = serializer.validated_data["amount"]
+
+        # Create a pending HesabEntry
+        entry = HesabEntry.objects.create(
+            foroshande_id=foroshande_id,
+            kind=HesabEntry.BES,  # credit
+            amount=amount,
+            ref_type="CREDIT",
+            ref_id=f"CREDIT-{foroshande_id}-{int(timezone.now().timestamp())}"
+        )
+
+        return Response({
+            "success": True,
+            "entry_id": entry.id,
+            "status": entry.status,
+            "amount": entry.amount
+        }, status=status.HTTP_201_CREATED)

@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from decimal import Decimal
 
 class Foroshande(models.Model):
 
@@ -17,9 +18,16 @@ class Foroshande(models.Model):
     def __str__(self):
         return self.name
 
+    def can_deduct(self, amount: Decimal) -> bool:
+        """
+        check if foroshande has enough balance
+        only responsible for balance check
+        """
+        return self.balance >= amount
+
 
 class PhoneNumber(models.Model):
-    mobile_number = models.CharField(max_length=15, unique=True, db_index=True)  # Indexed automatically because unique but we did add index because of faster lookups
+    mobile_number = models.IntegerField(unique=True, db_index=True)  # Indexed automatically because unique but we did add index because of faster lookups
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -48,3 +56,5 @@ class Charge(models.Model):
     request_id = models.CharField(max_length=64, unique=True)  # unique true no duplication at the database level so no double charging
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=NAMOVAFAGH)
     created_at = models.DateTimeField(default=timezone.now)
+
+

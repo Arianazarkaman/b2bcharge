@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from core.models import Foroshande, PhoneNumber, Charge
+from hesabdari.models import HesabEntry
+from django.db.models import Sum
 
 class PhoneNumberSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,10 +29,24 @@ class ForoshandeBalanceSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'total_credit', 'total_debit', 'balance']
 
     def get_total_credit(self, obj):
-        return obj.hesab_entries.filter(kind='BES').aggregate(total=serializers.Sum('amount'))['total'] or 0
+        return obj.hesab_entries.filter(kind=HesabEntry.BES).aggregate(total=Sum('amount'))['total'] or 0
 
     def get_total_debit(self, obj):
-        return obj.hesab_entries.filter(kind='BED').aggregate(total=serializers.Sum('amount'))['total'] or 0
+        return obj.hesab_entries.filter(kind=HesabEntry.BED).aggregate(total=Sum('amount'))['total'] or 0
 
     def get_balance(self, obj):
         return self.get_total_credit(obj) - self.get_total_debit(obj)
+    
+
+
+
+
+class CreditAddRequestSerializer(serializers.Serializer):
+    foroshande_id = serializers.IntegerField()
+    amount = serializers.DecimalField(max_digits=18, decimal_places=0)
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be positive")
+        return value
+

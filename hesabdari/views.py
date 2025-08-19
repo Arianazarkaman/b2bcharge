@@ -1,26 +1,28 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from django.utils import timezone
+from hesabdari.models import HesabEntry
+from hesabdari.serializers import HesabEntrySerializer
+from hesabdari.services import approve_entry  # import your service
 
-from hesabdari.models import EtebarTaghir, HesabEntry
-from hesabdari.serializers import EtebarTaghirSerializer, HesabEntrySerializer
-from hesabdari.services import approve_credit
 
-# -------------------------
-# Accounting / Hesabdari Views
-# -------------------------
-
-class ApproveCreditView(generics.GenericAPIView):
-    serializer_class = EtebarTaghirSerializer
+class ApproveHesabEntryView(generics.GenericAPIView):
+    serializer_class = HesabEntrySerializer
 
     def post(self, request):
-        adjustment_id = request.data.get("adjustment_id")
-        if not adjustment_id:
-            return Response({"error": "adjustment_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        entry_id = request.data.get("entry_id")
+        if not entry_id:
+            return Response({"error": "entry_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        admin_user = request.user  # the admin performing the approval
+
         try:
-            adj = approve_credit(adjustment_id)
-            serializer = self.get_serializer(adj)
+            # Use the service function instead of model method
+            approved_entry = approve_entry(entry_id, admin_user)
+            serializer = self.get_serializer(approved_entry)
             return Response(serializer.data)
+        except HesabEntry.DoesNotExist:
+            return Response({"error": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -31,11 +33,3 @@ class HesabEntryListView(generics.ListAPIView):
     def get_queryset(self):
         foroshande_id = self.kwargs["foroshande_id"]
         return HesabEntry.objects.filter(foroshande_id=foroshande_id).order_by("created_at")
-
-
-class EtebarTaghirListView(generics.ListAPIView):
-    serializer_class = EtebarTaghirSerializer
-
-    def get_queryset(self):
-        foroshande_id = self.kwargs["foroshande_id"]
-        return EtebarTaghir.objects.filter(foroshande_id=foroshande_id).order_by("created_at")

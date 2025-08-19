@@ -1,42 +1,43 @@
 from django.db import transaction
 from django.utils import timezone
-from .models import EtebarTaghir, HesabEntry
 from django.db.models import Sum
+from .models import HesabEntry
+from core.models import Foroshande
 
-def approve_credit(adjustment_id):
+def approve_entry(entry_id, admin_user):
+    """
+    Approve a HesabEntry safely.
+    Updates Foroshande balance, prevents negative balance,
+    and uses aggregation to calculate current balance.
+    """
     with transaction.atomic():
-        adj = EtebarTaghir.objects.select_for_update().get(id=adjustment_id)
+        entry = HesabEntry.objects.select_for_update().get(id=entry_id)
+        if entry.status == HesabEntry.TAIED:
+            return entry  # already approved
 
-        # if it already has been accepted don't double process it just return it
+        f = Foroshande.objects.select_for_update().get(id=entry.foroshande_id)
 
-        if adj.status == EtebarTaghir.TAIED:
-            return adj
+        # Calculate current balance using aggregation
+        total_bes = HesabEntry.objects.filter(foroshande=f, kind=HesabEntry.BES, status=HesabEntry.TAIED).aggregate(total=Sum("amount"))["total"] or 0
+        total_bed = HesabEntry.objects.filter(foroshande=f, kind=HesabEntry.BED, status=HesabEntry.TAIED).aggregate(total=Sum("amount"))["total"] or 0
+        current_balance = total_bes - total_bed
 
-        foroshande = adj.foroshande
-        total_bes = HesabEntry.objects.filter(foroshande=foroshande, kind=HesabEntry.BES).aggregate(total=Sum("amount"))["total"] or 0
-        total_bed = HesabEntry.objects.filter(foroshande=foroshande, kind=HesabEntry.BED).aggregate(total=Sum("amount"))["total"] or 0
+        # Determine new balance after this entry
+        new_balance = current_balance + entry.amount if entry.kind == HesabEntry.BES else current_balance - entry.amount
 
-        new_balance = total_bes - total_bed + adj.amount
         if new_balance < 0:
-            raise ValueError("Cannot approve credit: would make balance negative")
-        
-        # normalli we add to an entry but we made this for the case if there is a decrease of budget in an entry
+            entry.status = HesabEntry.RAD
+            entry.save(update_fields=["status"])
+            raise ValueError("Cannot approve entry: would make balance negative")
 
-        if adj.amount > 0:
-            entry_kind = HesabEntry.BES
-        else:
-            entry_kind = HesabEntry.BED
+        # Update Foroshande balance
+        f.balance = new_balance
+        f.save(update_fields=["balance"])
 
-        # add the amoutn to this entry 
-        HesabEntry.objects.create(
-            foroshande=foroshande,
-            kind=entry_kind,
-            amount=abs(adj.amount),
-            ref_type="ETEBAR_TAGHIR",
-            ref_id=str(adj.id),
-        )
+        # Approve the entry
+        entry.status = HesabEntry.TAIED
+        entry.approved_at = timezone.now()
+        entry.approved_by = admin_user
+        entry.save(update_fields=["status", "approved_at", "approved_by"])
 
-        adj.status = EtebarTaghir.TAIED
-        adj.approved_at = timezone.now()
-        adj.save(update_fields=["status", "approved_at"])
-        return adj
+        return entry
