@@ -10,13 +10,16 @@ from hesabdari.services import approve_entry
 class HesabdariIntegrationTest(TestCase):
 
     def test_foroshande_credit_and_multiple_charges(self):
-        # Create admin and seller
+        # Create admin and foroshande
+
+
         admin = User.objects.create(username="admin")
         user = User.objects.create(username="seller1")
+
         f = Foroshande.objects.create(user=user, name="Seller 1", balance=0)
         print(f"Initial balance: {f.balance}")
 
-        # Step 1: Add credit request and approve
+        # first 1: Add credit request and approve
         credit_entry = HesabEntry.objects.create(
             foroshande=f,
             kind=HesabEntry.BES,
@@ -34,20 +37,20 @@ class HesabdariIntegrationTest(TestCase):
         print(f"Balance after approval: {f.balance}")
         self.assertEqual(f.balance, Decimal("1000000"))
 
-        # Step 2: Create 60 phone numbers and charge 5000 each
+        # second 2: Create 60 phone numbers and charge 5000 each
         for i in range(60):
             phone = PhoneNumber.objects.create(mobile_number=100000 + i)
             charge = charge_phone(f.id, phone.id, Decimal("5000"), f"REQ-{i+1}")
             print(f"Charged phone {phone.mobile_number}: {charge.amount} => new balance: {f.balance}")
             f.refresh_from_db()
 
-        # Step 3: Check final balance
+        # thirdd 3: Check final balance
         f.refresh_from_db()
         expected_balance = Decimal("1000000") - (60 * Decimal("5000"))
         print(f"Expected final balance: {expected_balance}, actual: {f.balance}")
         self.assertEqual(f.balance, expected_balance)
 
-        # Step 4: Check HesabEntry records
+        # fourth 4: Check HesabEntry records
         print("Checking HesabEntry records counts...")
         bed_count = HesabEntry.objects.filter(foroshande=f, kind=HesabEntry.BED, status=HesabEntry.TAIED).count()
         bes_count = HesabEntry.objects.filter(foroshande=f, kind=HesabEntry.BES, status=HesabEntry.TAIED).count()

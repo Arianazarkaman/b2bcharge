@@ -6,7 +6,7 @@ from decimal import Decimal
 class Foroshande(models.Model):
 
     ''' 
-    i used one by one if i used foreign key  a user could
+    i used one to one if i used foreign key  a user could
         have multiple foroshande and we don't want that so 
         each user can be exactly one foroshande 
     '''
@@ -43,7 +43,8 @@ class Charge(models.Model):
         Foroshande, 
         on_delete=models.CASCADE, 
         related_name="sharge_ha",
-        db_index=True  # indexed for faster lookups
+        db_index=True  
+        # indexed for faster lookups
     )
 
     # if we delete a phone number with charges this will raise an error ( consistency)

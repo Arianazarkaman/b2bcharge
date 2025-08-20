@@ -11,7 +11,7 @@ from core.models import Foroshande, PhoneNumber
 
 class ChargeUser(HttpUser):
     wait_time = between(1, 2)
-    host = "http://127.0.0.1:8000"  # your Django server
+    host = "http://127.0.0.1:8000"  
 
     @task
     def charge_random_phone(self):

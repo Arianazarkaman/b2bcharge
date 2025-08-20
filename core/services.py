@@ -13,11 +13,11 @@ def charge_phone(foroshande_id, phone_id, amount, request_id):
 
     amount = Decimal(amount)
 
-    # 1️⃣ Lock Foroshande row to prevent race conditions
+    #  Lock Foroshande row to prevent race conditions
     foroshande = Foroshande.objects.select_for_update().get(id=foroshande_id)
     phone = PhoneNumber.objects.get(id=phone_id)
 
-    # 2️⃣ Create Charge immediately for idempotency, even if insufficient balance
+    #  Create Charge immediately for idempotency, even if insufficient balance
     charge, created = Charge.objects.get_or_create(
         foroshande_id=foroshande_id,
         request_id=request_id,
@@ -26,13 +26,13 @@ def charge_phone(foroshande_id, phone_id, amount, request_id):
     if not created:
         return charge  # already processed
 
-    # 3️⃣ Check balance after Charge creation
+    # Check balance after Charge creation
     if not foroshande.can_deduct(amount):
-        # charge.status is already NAMOVAFAGH
+        
         charge.save(update_fields=["status"])
         raise ValueError(f"Foroshande {foroshande.id} has insufficient balance")
 
-    # 4️⃣ Deduct balance and create HesabEntry atomically
+    #chek the balance to see if it is able to sell charge
     with transaction.atomic():
         # lock again to prevent race condition
         foroshande = Foroshande.objects.select_for_update().get(id=foroshande_id)
@@ -51,7 +51,7 @@ def charge_phone(foroshande_id, phone_id, amount, request_id):
             approved_by=None
         )
 
-        # 5️⃣ Update charge status to MOVAFAGH
+        # Update charge status to MOVAFAGH
         charge.status = Charge.MOVAFAGH
         charge.save(update_fields=["status"])
 

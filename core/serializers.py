@@ -53,7 +53,7 @@ class CreditAddRequestSerializer(serializers.Serializer):
 
 
 class ForoshandeCreateSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(write_only=True)  # to create linked User
+    username = serializers.CharField(write_only=True)  
 
     class Meta:
         model = Foroshande
