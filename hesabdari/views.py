@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from hesabdari.models import HesabEntry
 from hesabdari.serializers import HesabEntrySerializer
-from hesabdari.services import approve_entry  # import your service
+from hesabdari.services import approve_entry  
 from rest_framework.permissions import IsAdminUser
 
 
@@ -17,7 +17,7 @@ class ApproveHesabEntryView(generics.GenericAPIView):
         if not entry_id:
             return Response({"error": "entry_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        admin_user = request.user  # the admin performing the approval
+        admin_user = request.user  
 
         try:
             approved_entry = approve_entry(entry_id, admin_user)

@@ -23,12 +23,12 @@ class HesabEntry(models.Model):
         related_name="hesab_entries",
         db_index=True
     )
-    
+
     approved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="approved_hesab_entries")
     kind = models.CharField(max_length=3, choices=KIND_CHOICES)
-    amount = models.DecimalField(max_digits=18, decimal_places=0)  # always > 0
+    amount = models.DecimalField(max_digits=18, decimal_places=0)  
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=MONTAZER)
-    ref_type = models.CharField(max_length=50)  # e.g., "CHARGE", "CREDIT"
+    ref_type = models.CharField(max_length=50)  # "CHARGE", "CREDIT"
     ref_id = models.CharField(max_length=64)   # unique reference id
     created_at = models.DateTimeField(default=timezone.now)
     approved_at = models.DateTimeField(null=True, blank=True)

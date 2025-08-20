@@ -13,7 +13,7 @@ def approve_entry(entry_id, admin_user):
     with transaction.atomic():
         entry = HesabEntry.objects.select_for_update().get(id=entry_id)
         if entry.status == HesabEntry.TAIED or entry.status == HesabEntry.RAD:
-            return entry  # already handled
+            return entry  
 
         f = Foroshande.objects.select_for_update().get(id=entry.foroshande_id)
 

@@ -7,7 +7,7 @@ from hesabdari.models import HesabEntry
 from hesabdari.services import approve_entry
 
 
-class HesabdariIntegrationTest(TestCase):
+class HesabdarTest(TestCase):
 
     def test_foroshande_credit_and_multiple_charges(self):
         # Create admin and foroshande
@@ -58,3 +58,4 @@ class HesabdariIntegrationTest(TestCase):
 
         self.assertEqual(bed_count, 60)
         self.assertEqual(bes_count, 1)
+
