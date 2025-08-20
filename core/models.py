@@ -27,11 +27,11 @@ class Foroshande(models.Model):
 
 
 class PhoneNumber(models.Model):
-    mobile_number = models.IntegerField(unique=True, db_index=True)  # Indexed automatically because unique but we did add index because of faster lookups
+    mobile_number = models.BigIntegerField(unique=True, db_index=True)  # Indexed automatically because unique but we did add index because of faster lookups
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.mobile_number
+        return str(self.mobile_number)
 
 
 class Charge(models.Model):

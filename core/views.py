@@ -4,13 +4,14 @@ from core.models import Foroshande, PhoneNumber, Charge
 from core.serializers import PhoneNumberSerializer, ChargeSerializer, ForoshandeBalanceSerializer, CreditAddRequestSerializer
 from core.services import charge_phone
 from hesabdari.models import HesabEntry
-
+from django.db import transaction
 
 
 
 class ChargePhoneView(generics.GenericAPIView):
     serializer_class = ChargeSerializer
 
+    @transaction.atomic
     def post(self, request):
         foroshande_id = request.data.get("foroshande_id")
         phone_id = request.data.get("phone_id")
