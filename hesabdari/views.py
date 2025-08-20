@@ -4,10 +4,13 @@ from django.utils import timezone
 from hesabdari.models import HesabEntry
 from hesabdari.serializers import HesabEntrySerializer
 from hesabdari.services import approve_entry  # import your service
+from rest_framework.permissions import IsAdminUser
 
 
 class ApproveHesabEntryView(generics.GenericAPIView):
     serializer_class = HesabEntrySerializer
+    permission_classes = [IsAdminUser]
+
 
     def post(self, request):
         entry_id = request.data.get("entry_id")
@@ -17,7 +20,6 @@ class ApproveHesabEntryView(generics.GenericAPIView):
         admin_user = request.user  # the admin performing the approval
 
         try:
-            # Use the service function instead of model method
             approved_entry = approve_entry(entry_id, admin_user)
             serializer = self.get_serializer(approved_entry)
             return Response(serializer.data)

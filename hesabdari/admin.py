@@ -1,35 +1,29 @@
 from django.contrib import admin
 from .models import HesabEntry
 from django.utils import timezone
+from .services import approve_entry
+
 
 
 @admin.register(HesabEntry)
-class HesabEntryAdmin(admin.ModelAdmin):
+class HesabEntryApproveAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 
-        'foroshande', 
-        'kind', 
-        'amount', 
-        'status', 
-        'ref_type', 
-        'ref_id', 
-        'approved_by', 
-        'created_at', 
-        'approved_at'
+        'id', 'foroshande', 'kind', 'amount', 'status', 
+        'ref_type', 'ref_id', 'approved_by', 'created_at', 'approved_at'
     )
     list_filter = ('kind', 'status', 'ref_type', 'created_at', 'approved_at')
     search_fields = ('foroshande__name', 'ref_type', 'ref_id', 'approved_by__username')
     ordering = ('-created_at',)
-    readonly_fields = ('approved_at',)  # approved_at is set only after approval
+    readonly_fields = ('approved_at',)
 
-    # Optional: allow admin to approve entries directly
-    actions = ['approve_entries']
+    # Add a custom admin action
+    actions = ['approve_selected_entries']
 
-    def approve_entries(self, request, queryset):
-        updated = queryset.filter(status=HesabEntry.MONTAZER).update(
-            status=HesabEntry.TAIED,
-            approved_by=request.user,
-            approved_at=timezone.now()
-        )
-        self.message_user(request, f"{updated} entries approved.")
-    approve_entries.short_description = "Approve selected Hesab entries"
+    def approve_selected_entries(self, request, queryset):
+        count = 0
+        for entry in queryset.filter(status=HesabEntry.MONTAZER):
+            # Use the service function to approve the entry
+            approve_entry(entry.id, request.user)
+            count += 1
+        self.message_user(request, f"{count} Hesab entries approved successfully.")
+    approve_selected_entries.short_description = "Approve selected Hesab entries"

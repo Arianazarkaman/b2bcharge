@@ -2,6 +2,7 @@ from rest_framework import serializers
 from core.models import Foroshande, PhoneNumber, Charge
 from hesabdari.models import HesabEntry
 from django.db.models import Sum
+from django.contrib.auth.models import User
 
 class PhoneNumberSerializer(serializers.ModelSerializer):
     class Meta:
@@ -50,3 +51,16 @@ class CreditAddRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("Amount must be positive")
         return value
 
+
+class ForoshandeCreateSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(write_only=True)  # to create linked User
+
+    class Meta:
+        model = Foroshande
+        fields = ["username", "name", "balance"]
+
+    def create(self, validated_data):
+        username = validated_data.pop("username")
+        user = User.objects.create(username=username)
+        foroshande = Foroshande.objects.create(user=user, **validated_data)
+        return foroshande

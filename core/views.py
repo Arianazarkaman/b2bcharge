@@ -1,11 +1,11 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from core.models import Foroshande, PhoneNumber, Charge
-from core.serializers import PhoneNumberSerializer, ChargeSerializer, ForoshandeBalanceSerializer, CreditAddRequestSerializer
+from core.serializers import PhoneNumberSerializer, ChargeSerializer, ForoshandeBalanceSerializer, CreditAddRequestSerializer, ForoshandeCreateSerializer
 from core.services import charge_phone
 from hesabdari.models import HesabEntry
 from django.db import transaction
-
+from django.utils import timezone
 
 
 class ChargePhoneView(generics.GenericAPIView):
@@ -78,4 +78,19 @@ class CreditAddRequestView(generics.GenericAPIView):
             "entry_id": entry.id,
             "status": entry.status,
             "amount": entry.amount
+        }, status=status.HTTP_201_CREATED)
+    
+
+class ForoshandeCreateView(generics.GenericAPIView):
+    serializer_class = ForoshandeCreateSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        foroshande = serializer.save()
+        return Response({
+            "id": foroshande.id,
+            "name": foroshande.name,
+            "balance": foroshande.balance,
+            "user_id": foroshande.user.id
         }, status=status.HTTP_201_CREATED)
