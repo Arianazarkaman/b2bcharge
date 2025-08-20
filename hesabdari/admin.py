@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import HesabEntry
 from django.utils import timezone
 from .services import approve_entry
-
+from django.db import transaction
 
 
 @admin.register(HesabEntry)
@@ -19,11 +19,12 @@ class HesabEntryApproveAdmin(admin.ModelAdmin):
     # Add a custom admin action
     actions = ['approve_selected_entries']
 
+
     def approve_selected_entries(self, request, queryset):
         count = 0
-        for entry in queryset.filter(status=HesabEntry.MONTAZER):
-            # Use the service function to approve the entry
-            approve_entry(entry.id, request.user)
-            count += 1
+        with transaction.atomic():
+            for entry in queryset.filter(status=HesabEntry.MONTAZER):
+                approve_entry(entry.id, request.user)  # service handles balance update
+                count += 1
         self.message_user(request, f"{count} Hesab entries approved successfully.")
-    approve_selected_entries.short_description = "Approve selected Hesab entries"
+

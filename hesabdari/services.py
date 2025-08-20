@@ -29,9 +29,9 @@ def approve_entry(entry_id, admin_user):
             entry.approved_at = timezone.now()
             entry.approved_by = admin_user
             entry.save(update_fields=["status", "approved_at", "approved_by"])
-            return entry  # ❌ rejected, no exception
+            return entry  
 
-        # ✅ approve
+    
         f.balance = new_balance
         f.save(update_fields=["balance"])
 
